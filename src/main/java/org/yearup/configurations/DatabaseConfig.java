@@ -19,8 +19,8 @@ public class DatabaseConfig
 
     @Autowired
     public DatabaseConfig(@Value("${datasource.url}") String url,
-                          @Value("${datasource.username}") String username,
-                          @Value("${datasource.password}") String password)
+                          @Value("root") String username,
+                          @Value("yearup") String password)
     {
         basicDataSource = new BasicDataSource();
         basicDataSource.setUrl(url);
