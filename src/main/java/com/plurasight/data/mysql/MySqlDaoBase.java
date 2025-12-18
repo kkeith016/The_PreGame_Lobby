@@ -1,0 +1,20 @@
+package com.plurasight.data.mysql;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+public abstract class MySqlDaoBase
+{
+    DataSource dataSource;
+
+    public MySqlDaoBase(DataSource dataSource)
+    {
+        this.dataSource = dataSource;
+    }
+
+    protected Connection getConnection() throws SQLException
+    {
+        return dataSource.getConnection();
+    }
+}
