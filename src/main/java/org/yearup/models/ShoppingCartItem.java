@@ -1,7 +1,6 @@
 package org.yearup.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -9,14 +8,13 @@ public class ShoppingCartItem
 {
     private Product product;
     private int quantity = 1;
-    private BigDecimal discountPercent = BigDecimal.ZERO;
+    private BigDecimal discountPercent = BigDecimal.ZERO; // as percent, e.g., 10 = 10%
 
     public ShoppingCartItem() { }
 
     public ShoppingCartItem(Product product, int quantity) {
         this.product = product;
-        this.quantity = quantity;
-        this.discountPercent = BigDecimal.ZERO;
+        setQuantity(quantity);
     }
 
     public Product getProduct() {
@@ -32,19 +30,30 @@ public class ShoppingCartItem
     }
 
     public void setQuantity(int quantity) {
-        this.quantity = quantity;
+        if (quantity < 1) {
+            this.quantity = 1;
+        } else {
+            this.quantity = quantity;
+        }
+    }
+
+    public void incrementQuantity(int amount) {
+        if (amount > 0) {
+            this.quantity += amount;
+        }
     }
 
     public BigDecimal getDiscountPercent() {
         return discountPercent;
     }
 
-    // Accepts BigDecimal instead of int for precision
     public void setDiscountPercent(BigDecimal discountPercent) {
-        if (discountPercent != null) {
-            this.discountPercent = discountPercent;
-        } else {
+        if (discountPercent == null || discountPercent.compareTo(BigDecimal.ZERO) < 0) {
             this.discountPercent = BigDecimal.ZERO;
+        } else if (discountPercent.compareTo(BigDecimal.valueOf(100)) > 0) {
+            this.discountPercent = BigDecimal.valueOf(100);
+        } else {
+            this.discountPercent = discountPercent;
         }
     }
 
@@ -57,17 +66,12 @@ public class ShoppingCartItem
         if (product == null) return BigDecimal.ZERO;
 
         BigDecimal basePrice = product.getPrice();
-        BigDecimal qty = new BigDecimal(this.quantity);
+        BigDecimal qty = BigDecimal.valueOf(quantity);
 
         BigDecimal subTotal = basePrice.multiply(qty);
         BigDecimal discountAmount = subTotal.multiply(discountPercent)
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
         return subTotal.subtract(discountAmount);
-    }
-
-    // Empty setter required for frameworks that need a setter (like Jackson)
-    public void setLineTotal(BigDecimal lineTotal) {
-        // No-op: lineTotal is calculated dynamically
     }
 }
