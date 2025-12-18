@@ -3,6 +3,7 @@ package org.yearup.controllers;
 import org.yearup.data.ProductDao;
 import org.yearup.data.ShoppingCartDao;
 import org.yearup.data.UserDao;
+import org.yearup.models.Product;
 import org.yearup.models.ShoppingCart;
 import org.yearup.models.ShoppingCartItem;
 import org.yearup.models.User;
@@ -16,7 +17,7 @@ import java.security.Principal;
 
 @RestController
 @RequestMapping("/cart")
-@CrossOrigin(origins = "https://localhost:8080")
+@CrossOrigin
 @PreAuthorize("isAuthenticated()")
 public class ShoppingCartController
 {
@@ -37,42 +38,26 @@ public class ShoppingCartController
     @GetMapping
     public ShoppingCart getCart(Principal principal)
     {
-        try
-        {
-            User user = userDao.getByUserName(principal.getName());
-            return shoppingCartDao.getByUserId(user.getId());
-        }
-        catch (Exception ex)
-        {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Unable to retrieve shopping cart."
-            );
-        }
+        User user = userDao.getByUserName(principal.getName());
+        return shoppingCartDao.getByUserId(user.getId());
     }
 
     // POST /cart/products/{productId}
     @PostMapping("/products/{productId}")
     public ResponseEntity<Void> addProduct(@PathVariable int productId, Principal principal)
     {
-        try
-        {
-            User user = userDao.getByUserName(principal.getName());
+        User user = userDao.getByUserName(principal.getName());
 
-            if (shoppingCartDao.exists(user.getId(), productId))
-                shoppingCartDao.incrementQuantity(user.getId(), productId);
-            else
-                shoppingCartDao.add(user.getId(), productId, 1);
+        Product product = productDao.getById(productId);
+        if (product == null)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found");
 
-            return ResponseEntity.status(HttpStatus.CREATED).build();
-        }
-        catch (Exception ex)
-        {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Unable to add product to cart."
-            );
-        }
+        if (shoppingCartDao.exists(user.getId(), productId))
+            shoppingCartDao.incrementQuantity(user.getId(), productId);
+        else
+            shoppingCartDao.add(user.getId(), productId, 1);
+
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     // PUT /cart/products/{productId}
@@ -81,37 +66,22 @@ public class ShoppingCartController
                               @RequestBody ShoppingCartItem item,
                               Principal principal)
     {
-        try
-        {
-            User user = userDao.getByUserName(principal.getName());
+        User user = userDao.getByUserName(principal.getName());
 
-            if (shoppingCartDao.exists(user.getId(), productId))
-                shoppingCartDao.update(user.getId(), productId, item.getQuantity());
-        }
-        catch (Exception ex)
-        {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Unable to update shopping cart."
-            );
-        }
+        if (!shoppingCartDao.exists(user.getId(), productId))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not in cart");
+
+        if (item.getQuantity() <= 0)
+            shoppingCartDao.delete(user.getId(), productId);
+        else
+            shoppingCartDao.update(user.getId(), productId, item.getQuantity());
     }
 
     // DELETE /cart
     @DeleteMapping
     public void clearCart(Principal principal)
     {
-        try
-        {
-            User user = userDao.getByUserName(principal.getName());
-            shoppingCartDao.clear(user.getId());
-        }
-        catch (Exception ex)
-        {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Unable to clear shopping cart."
-            );
-        }
+        User user = userDao.getByUserName(principal.getName());
+        shoppingCartDao.clear(user.getId());
     }
 }

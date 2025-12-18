@@ -8,10 +8,7 @@ import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 
 @Component
 public class MySqlShoppingCartDao extends MySqlDaoBase implements ShoppingCartDao
@@ -21,9 +18,6 @@ public class MySqlShoppingCartDao extends MySqlDaoBase implements ShoppingCartDa
         super(dataSource);
     }
 
-    // -------------------------------------------------
-    // GET SHOPPING CART BY USER ID
-    // -------------------------------------------------
     @Override
     public ShoppingCart getByUserId(int userId)
     {
@@ -34,7 +28,7 @@ public class MySqlShoppingCartDao extends MySqlDaoBase implements ShoppingCartDa
                 p.price,
                 p.category_id,
                 p.description,
-                p.sub_category,
+                p.subcategory,
                 p.stock,
                 p.image_url,
                 p.featured,
@@ -51,36 +45,28 @@ public class MySqlShoppingCartDao extends MySqlDaoBase implements ShoppingCartDa
         {
             statement.setInt(1, userId);
 
-            try (ResultSet results = statement.executeQuery())
+            ResultSet results = statement.executeQuery();
+            while (results.next())
             {
-                while (results.next())
-                {
-                    Product product = MySqlProductDao.mapRow(results);
+                Product product = MySqlProductDao.mapRow(results);
+                int quantity = results.getInt("quantity");
 
-                    int quantity = results.getInt("quantity");
-                    BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(quantity));
+                ShoppingCartItem item = new ShoppingCartItem();
+                item.setProduct(product);
+                item.setQuantity(quantity);
+                item.setLineTotal(product.getPrice().multiply(BigDecimal.valueOf(quantity)));
 
-                    ShoppingCartItem item = new ShoppingCartItem();
-                    item.setProduct(product);
-                    item.setQuantity(quantity);
-                    item.setDiscountPercent(BigDecimal.valueOf(0));
-                    item.setLineTotal(lineTotal);
-
-                    cart.getItems().put(product.getProductId(), item);
-                }
+                cart.getItems().put(product.getProductId(), item);
             }
         }
         catch (SQLException e)
         {
-            throw new RuntimeException("Error pulling up your shopping cart.", e);
+            throw new RuntimeException("Error loading shopping cart", e);
         }
 
         return cart;
     }
 
-    // -------------------------------------------------
-    // CHECK IF ITEM EXISTS IN CART
-    // -------------------------------------------------
     @Override
     public boolean exists(int userId, int productId)
     {
@@ -92,23 +78,15 @@ public class MySqlShoppingCartDao extends MySqlDaoBase implements ShoppingCartDa
             statement.setInt(1, userId);
             statement.setInt(2, productId);
 
-            try (ResultSet rs = statement.executeQuery())
-            {
-                if (rs.next())
-                    return rs.getInt(1) > 0;
-            }
+            ResultSet rs = statement.executeQuery();
+            return rs.next() && rs.getInt(1) > 0;
         }
         catch (SQLException e)
         {
-            throw new RuntimeException("Error checking if cart item exists.", e);
+            throw new RuntimeException(e);
         }
-
-        return false;
     }
 
-    // -------------------------------------------------
-    // ADD PRODUCT
-    // -------------------------------------------------
     @Override
     public void add(int userId, int productId, int quantity)
     {
@@ -124,17 +102,18 @@ public class MySqlShoppingCartDao extends MySqlDaoBase implements ShoppingCartDa
         }
         catch (SQLException e)
         {
-            throw new RuntimeException("Error adding item to cart.", e);
+            throw new RuntimeException(e);
         }
     }
 
-    // -------------------------------------------------
-    // INCREMENT QUANTITY
-    // -------------------------------------------------
     @Override
     public void incrementQuantity(int userId, int productId)
     {
-        String sql = "UPDATE shopping_cart SET quantity = quantity + 1 WHERE user_id = ? AND product_id = ?";
+        String sql = """
+            UPDATE shopping_cart
+            SET quantity = quantity + 1
+            WHERE user_id = ? AND product_id = ?
+        """;
 
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(sql))
@@ -145,13 +124,10 @@ public class MySqlShoppingCartDao extends MySqlDaoBase implements ShoppingCartDa
         }
         catch (SQLException e)
         {
-            throw new RuntimeException("Error incrementing cart item quantity.", e);
+            throw new RuntimeException(e);
         }
     }
 
-    // -------------------------------------------------
-    // UPDATE QUANTITY
-    // -------------------------------------------------
     @Override
     public void update(int userId, int productId, int quantity)
     {
@@ -167,13 +143,10 @@ public class MySqlShoppingCartDao extends MySqlDaoBase implements ShoppingCartDa
         }
         catch (SQLException e)
         {
-            throw new RuntimeException("Error updating cart item.", e);
+            throw new RuntimeException(e);
         }
     }
 
-    // -------------------------------------------------
-    // DELETE ONE PRODUCT
-    // -------------------------------------------------
     @Override
     public void delete(int userId, int productId)
     {
@@ -188,13 +161,10 @@ public class MySqlShoppingCartDao extends MySqlDaoBase implements ShoppingCartDa
         }
         catch (SQLException e)
         {
-            throw new RuntimeException("Error deleting cart item.", e);
+            throw new RuntimeException(e);
         }
     }
 
-    // -------------------------------------------------
-    // CLEAR CART
-    // -------------------------------------------------
     @Override
     public void clear(int userId)
     {
@@ -208,7 +178,7 @@ public class MySqlShoppingCartDao extends MySqlDaoBase implements ShoppingCartDa
         }
         catch (SQLException e)
         {
-            throw new RuntimeException("Error clearing shopping cart.", e);
+            throw new RuntimeException(e);
         }
     }
 }

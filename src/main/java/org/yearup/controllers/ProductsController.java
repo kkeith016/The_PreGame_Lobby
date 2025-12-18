@@ -2,6 +2,7 @@ package org.yearup.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -37,11 +38,16 @@ public class ProductsController
         {
             return productDao.search(categoryId, minPrice, maxPrice, subCategory);
         }
+        catch (ResponseStatusException ex)
+        {
+            throw ex;
+        }
         catch (Exception ex)
         {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Oops... our bad."
+                    "Oops... our bad.",
+                    ex
             );
         }
     }
@@ -49,79 +55,18 @@ public class ProductsController
     // GET /products/{id}
     @GetMapping("/{id}")
     @PreAuthorize("permitAll()")
-    public Product getById(@PathVariable int id)
+    public ResponseEntity<Product> getById(@PathVariable int id)
     {
         try
         {
             Product product = productDao.getById(id);
 
             if (product == null)
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+            {
+                return ResponseEntity.notFound().build();
+            }
 
-            return product;
-        }
-        catch (ResponseStatusException ex)
-        {
-            throw ex; // preserve 404
-        }
-        catch (Exception ex)
-        {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Oops... our bad."
-            );
-        }
-    }
-
-    // POST /products
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public Product addProduct(@RequestBody Product product)
-    {
-        try
-        {
-            return productDao.create(product);
-        }
-        catch (Exception ex)
-        {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Oops... our bad."
-            );
-        }
-    }
-
-    // PUT /products/{id}
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public void updateProduct(@PathVariable int id, @RequestBody Product product)
-    {
-        try
-        {
-            productDao.update(id, product);
-        }
-        catch (Exception ex)
-        {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Oops... our bad."
-            );
-        }
-    }
-
-    // DELETE /products/{id}
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public void deleteProduct(@PathVariable int id)
-    {
-        try
-        {
-            Product product = productDao.getById(id);
-
-            if (product == null)
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-
-            productDao.delete(id);
+            return ResponseEntity.ok(product);
         }
         catch (ResponseStatusException ex)
         {
@@ -131,7 +76,95 @@ public class ProductsController
         {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Oops... our bad."
+                    "Oops... our bad.",
+                    ex
+            );
+        }
+    }
+
+    // POST /products
+    @PostMapping
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<Product> addProduct(@RequestBody Product product)
+    {
+        try
+        {
+            Product created = productDao.create(product);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        }
+        catch (ResponseStatusException ex)
+        {
+            throw ex;
+        }
+        catch (Exception ex)
+        {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Oops... our bad.",
+                    ex
+            );
+        }
+    }
+
+    // PUT /products/{id}
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<Product> updateProduct(
+            @PathVariable int id,
+            @RequestBody Product product)
+    {
+        try
+        {
+            Product updated = productDao.update(id, product);
+
+            if (updated == null)
+            {
+                return ResponseEntity.notFound().build();
+            }
+
+            return ResponseEntity.ok(updated);
+        }
+        catch (ResponseStatusException ex)
+        {
+            throw ex;
+        }
+        catch (Exception ex)
+        {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Oops... our bad.",
+                    ex
+            );
+        }
+    }
+
+    // DELETE /products/{id}
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<Void> deleteProduct(@PathVariable int id)
+    {
+        try
+        {
+            Product product = productDao.getById(id);
+
+            if (product == null)
+            {
+                return ResponseEntity.notFound().build();
+            }
+
+            productDao.delete(id);
+            return ResponseEntity.noContent().build();
+        }
+        catch (ResponseStatusException ex)
+        {
+            throw ex;
+        }
+        catch (Exception ex)
+        {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Oops... our bad.",
+                    ex
             );
         }
     }
